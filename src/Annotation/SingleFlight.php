@@ -58,7 +58,7 @@ class SingleFlight extends AbstractAnnotation
         $key = Arr::get($value, 'key', false);
         $keyBy = Arr::get($value, 'keyBy', []);
         if (!$key && empty($keyBy)) {
-            throw new SingleFlightException('SingleFlight annotation needs a specified barrier key to shared calls');
+            throw new SingleFlightException('SingleFlight annotation needs a specified barrier key to share calls between coroutines');
         }
         return $value;
     }

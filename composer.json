@@ -19,6 +19,7 @@
       "Al\\SingleFlight\\": "src/"
     }
   },
+  "minimum-stability": "dev",
   "extra": {
     "hyperf": {
       "config": "Al\\SingleFlight\\ConfigProvider"

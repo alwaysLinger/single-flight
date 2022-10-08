@@ -41,7 +41,5 @@ public function handle()
 
 ## TODOS
 ```
-1、some boundary conditions like channel timeout
-2、some exceptions supression handles
-3、use stale cahce in memory
+1、use stale cache in memory
 ```

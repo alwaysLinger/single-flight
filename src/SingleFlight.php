@@ -4,95 +4,105 @@ namespace Al\SingleFlight;
 
 use Al\SingleFlight\Coordinator\CoordinatorManager;
 use Hyperf\Context\Context;
+use Hyperf\Utils\Arr;
 use Hyperf\Utils\Coroutine;
-use Hyperf\Utils\Traits\Container;
-use Swoole\Coroutine\WaitGroup;
+use Hyperf\Utils\WaitGroup;
 
 class SingleFlight
 {
-    use Container;
-
+    protected static $waitGroupContainer = [];
     protected static $processCoroutine = [];
+    protected static $sharedResult = [];
 
     public const AccessKeyTemplate = 'shared_access:%s';
     public const BarrierKeyTemplate = 'shared_call:%s';
 
     public static function getBarrierKey(string $key): string
     {
-        return sprintf(self::BarrierKeyTemplate, $key);
+        return sprintf(static::BarrierKeyTemplate, $key);
     }
 
     public static function do(string $key, callable $process, bool $supressThrowable, int $timeout)
     {
-        $wg = value(function ($key) {
-            if (self::has(self::getBarrierKey($key))) {
-                return self::get(self::getBarrierKey($key));
-            } else {
-                $wg = new WaitGroup();
-                self::set(self::getBarrierKey($key), $wg);
-                return $wg;
-            }
-        }, $key);
+        static::getWaitBarrier($key);
 
-        self::shareCalls($key, $process, $supressThrowable, $timeout);
-        self::waitResult($key, $timeout);
+        static::shareCall($key, $process, $supressThrowable, $timeout);
+        static::waitResult($key, $timeout);
 
-        if (self::$processCoroutine[self::getBarrierKey($key)] == Coroutine::id()) {
-            $wg->wait();
-            self::done($key);
+        static::wait($key, $timeout);
+    }
+
+    protected static function shareCall(string $key, callable $process, bool $supressThrowable, int $timeout)
+    {
+        if ($access = static::canProcess($key)) {
+            static::$processCoroutine[static::getBarrierKey($key)] = Coroutine::id();
+            static::shareResult($key, call_user_func($process));
+        } else {
+            static::getWaitBarrier($key)->add();
         }
+
+        return $access;
+    }
+
+    protected static function canProcess($key): bool
+    {
+        return CoordinatorManager::until(static::getAccessKey($key))->resume();
     }
 
     protected static function done(string $key)
     {
-        CoordinatorManager::clear(self::getBarrierKey($key));
-        CoordinatorManager::clear(self::getAccessKey($key));
-        unset(self::$processCoroutine[self::getBarrierKey($key)]);
-    }
-
-    protected static function shareCalls(string $key, callable $process, bool $supressThrowable, int $timeout)
-    {
-        self::get(self::getBarrierKey($key))->add();
-        if ($carrierIns = self::getCarrierInstance($key, $process, $supressThrowable, $timeout)) {
-            self::$processCoroutine[self::getBarrierKey($key)] = Coroutine::id();
-            try {
-                $carrierIns->setResult(call_user_func($carrierIns->process));
-            } finally {
-                self::setResult($carrierIns->key, $carrierIns->getResult());
-            }
-        }
-    }
-
-    public static function getCarrierInstance(string $key, callable $process, bool $supressThrowable, int $timeout)
-    {
-        if (CoordinatorManager::until(self::getAccessKey($key))->resume()) {
-            return new Carrier($key, $process, $supressThrowable, $timeout);
-        }
-
-        return false;
+        CoordinatorManager::clear(static::getBarrierKey($key));
+        CoordinatorManager::clear(static::getAccessKey($key));
+        unset(static::$waitGroupContainer[static::getBarrierKey($key)]);
+        unset(static::$processCoroutine[static::getBarrierKey($key)]);
+        unset(static::$sharedResult[static::getBarrierKey($key)]);
     }
 
     protected static function getAccessKey(string $key): string
     {
-        return sprintf(self::AccessKeyTemplate, $key);
+        return sprintf(static::AccessKeyTemplate, $key);
     }
 
-    public static function waitResult(string $key, int $timeout)
+    protected static function waitResult(string $key, int $timeout)
     {
-        CoordinatorManager::until(self::getBarrierKey($key))->yield($timeout);
-        $result = Context::set(self::getBarrierKey($key), Context::get(self::getBarrierKey($key), null, self::$processCoroutine[self::getBarrierKey($key)]));
-        self::get(self::getBarrierKey($key))->done();
+        $closed = CoordinatorManager::until(static::getBarrierKey($key))->yield($timeout);
+        if (!$closed) {
+            return Context::set(static::getBarrierKey($key), ExceptionHandler::timeoutException($key));
+        }
+
+        $result = Context::set(static::getBarrierKey($key), static::$sharedResult[static::getBarrierKey($key)]);
+        if (static::$processCoroutine[static::getBarrierKey($key)] != Coroutine::id()) {
+            static::getWaitBarrier($key)->done();
+        }
+
         return $result;
     }
 
-    public static function setResult(string $key, $result)
+    protected static function shareResult(string $key, $result)
     {
-        Context::set(self::getBarrierKey($key), $result);
-        CoordinatorManager::until(self::getBarrierKey($key))->resume();
+        static::$sharedResult[static::getBarrierKey($key)] = $result;
+        CoordinatorManager::until(static::getBarrierKey($key))->resume();
     }
 
-    public static function getResult(string $key)
+    public static function getResult(string $key, $fallback = null)
     {
-        return Context::get(self::getBarrierKey($key));
+        return Context::get(static::getBarrierKey($key), $fallback);
+    }
+
+    protected static function getWaitBarrier(string $key): WaitGroup
+    {
+        return value(
+            fn($key) => Arr::get(static::$waitGroupContainer, static::getBarrierKey($key), null) ?:
+                static::$waitGroupContainer[static::getBarrierKey($key)] = new WaitGroup(),
+            $key
+        );
+    }
+
+    protected static function wait(string $key, int $timeout)
+    {
+        if (static::$processCoroutine[static::getBarrierKey($key)] == Coroutine::id()) {
+            static::getWaitBarrier($key)->wait($timeout);
+            static::done($key);
+        }
     }
 }

@@ -66,7 +66,7 @@ class SingleFlight extends AbstractAnnotation
     public function getBarrierKey(): string
     {
         return value(
-            fn($key) => $key ?: call_user_func($this->keyBy),
+            fn($key) => $key ?: $this->key = call_user_func($this->keyBy),
             $this->key
         );
     }

@@ -17,7 +17,10 @@
   "autoload": {
     "psr-4": {
       "Al\\SingleFlight\\": "src/"
-    }
+    },
+    "files": [
+      "src/Functions.php"
+    ]
   },
   "minimum-stability": "dev",
   "extra": {

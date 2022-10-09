@@ -1,23 +1,24 @@
 ## DESCRIPTION
 ```
-Basically this package provides a SingleFlight annotation to share calls result between coroutines for hyperf framework
+Basically this package provides a coroutine barrier annotation to share calls result between coroutines for hyperf framework
 ```
 
 ## INSTALLATION
 ```
 composer require yylh/single-flight
+php bin/hyperf vendor:publish yylh/single-flight
 ```
 
 ## EXAMPLE
 ```php
 # SomeService.php
 /**
- * @SingleFlight(key="some_barrier_key")
+ * @Barrier(key="some_barrier_key")
  */
 public function test()
 {
-    sleep(2);
     var_dump('only do once');
+    sleep(2);
     return 'some result';
 }
 

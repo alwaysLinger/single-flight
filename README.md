@@ -6,7 +6,7 @@ Basically this package provides a coroutine barrier annotation to share calls re
 ## INSTALLATION
 ```
 composer require yylh/single-flight
-php bin/hyperf vendor:publish yylh/single-flight
+php bin/hyperf.php vendor:publish yylh/single-flight
 ```
 
 ## EXAMPLE

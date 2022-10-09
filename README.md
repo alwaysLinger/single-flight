@@ -15,10 +15,22 @@ php bin/hyperf.php vendor:publish yylh/single-flight
 /**
  * @Barrier(key="some_barrier_key")
  */
-public function test()
+public function foo()
 {
-    var_dump('only do once');
+    // only one coroutine can execute this method, others just wait for the shared result
+    var_dump('only one goroutine can arrive here'); 
     sleep(2);
+    return 'some result';
+}
+
+/**
+ * @SingleFlight(key="another_barrier_key",supressThrowable=true,timeout=1)
+ */
+public function bar()
+{
+    var_dump('all goroutine will execute before yield');
+    sleep(2); // other coroutines got yield here if there are any and just wait for the shared result
+    var_dump('only one goroutine can arrive here');
     return 'some result';
 }
 

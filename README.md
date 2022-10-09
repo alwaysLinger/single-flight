@@ -42,7 +42,7 @@ public function handle()
     $wg = new WaitGroup($count);
     for ($i = 0; $i < $count; $i++) {
         go(function () use ($wg) {
-            $ret = make(SomeService::class)->test();
+            $ret = make(SomeService::class)->foo();
             var_dump($ret);
             $wg->done();
         });

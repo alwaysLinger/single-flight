@@ -1,37 +1,47 @@
 ## DESCRIPTION
+
 ```
 Basically this package provides a coroutine barrier annotation to share calls result between coroutines for hyperf framework
 ```
 
 ## INSTALLATION
+
 ```
 composer require yylh/single-flight
 php bin/hyperf.php vendor:publish yylh/single-flight
 ```
 
 ## EXAMPLE
+
 ```php
 # SomeService.php
 /**
- * @Barrier(key="some_barrier_key")
+ * invoke this proxied method will get one share exception
+ * the rest will get wait result exception because of the timeout
+ * 
+ * @ShareCalls(key={SomeClass::class,"someMethod"},timeout=0.5)
  */
 public function foo()
 {
-    // only one coroutine can execute this method, others just wait for the shared result
-    var_dump('only one goroutine can arrive here'); 
+    // only one coroutine can execute this method,
+    // others just wait for the shared result
+    // this package only provides a barrier for IO operations
+    var_dump('only one coroutine can reach here'); 
     sleep(2);
     return 'some result';
 }
 
 /**
- * @SingleFlight(key="another_barrier_key",supressThrowable=true,timeout=1)
+ * one coroutine will process the method
+ * others just wait for the result
+ * 
+ * @ShareCalls(key="some_barrier_key",timeout=2.0)
  */
-public function bar()
+public function bar() 
 {
-    var_dump('all goroutine will execute before yield');
-    sleep(2); // other coroutines got yield here if there are any and just wait for the shared result
-    var_dump('only one goroutine can arrive here');
-    return 'some result';
+    var_dump('only one coroutine can reach here'); 
+    sleep(1);
+    return 'result';
 }
 
 # test.php
@@ -53,6 +63,7 @@ public function handle()
 ```
 
 ## TODOS
+
 ```
 1、use stale cache in memory
 ```

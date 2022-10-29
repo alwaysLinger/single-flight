@@ -2,7 +2,7 @@
   "name": "yylh/single-flight",
   "description": "package singleflight provides a duplicate function call suppression mechanism",
   "license": "MIT",
-  "keywords": ["single-flight", "shared-calls", "coroutine", "waitgroup", "hyperf"],
+  "keywords": ["single-flight", "shared-calls", "coroutine", "hyperf"],
   "authors": [
     {
       "name": "al",
@@ -10,7 +10,6 @@
     }
   ],
   "require": {
-    "psr/container": "^2.0",
     "hyperf/utils": "^2.2",
     "hyperf/di": "^2.2"
   },

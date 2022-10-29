@@ -14,14 +14,6 @@ class ConfigProvider
                     ],
                 ],
             ],
-            'publish' => [
-                [
-                    'id' => 'single_flight',
-                    'description' => 'The config for single-flight.',
-                    'source' => __DIR__ . '/../publish/single_flight.php',
-                    'destination' => BASE_PATH . '/config/autoload/single_flight.php',
-                ],
-            ],
         ];
     }
 }
